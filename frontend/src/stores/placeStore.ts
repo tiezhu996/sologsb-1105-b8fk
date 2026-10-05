@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Certainty, PlacePair, PlaceType } from '../types/placePair'
 import { createId, db, plain } from '../utils/db'
+import { notifyUpsert } from '../services/indexer'
 
 export type NewPlacePair = Omit<PlacePair, 'id'>
 
@@ -43,6 +44,7 @@ export const usePlaceStore = defineStore('place', () => {
     await db.placePairs.add(plain(pair))
     pairs.value = [...pairs.value, pair]
     currentPair.value = pair
+    notifyUpsert('pair', pair.id)
     return pair
   }
 

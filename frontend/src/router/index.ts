@@ -4,6 +4,7 @@ import SheetDetail from '../pages/SheetDetail.vue'
 import PlaceBoard from '../pages/PlaceBoard.vue'
 import HistoryTimeline from '../pages/HistoryTimeline.vue'
 import NeighborView from '../pages/NeighborView.vue'
+import SearchPage from '../pages/SearchPage.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/sheets' },
@@ -12,6 +13,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/places', name: 'places', component: PlaceBoard },
   { path: '/places/:id/history', name: 'place-history', component: HistoryTimeline },
   { path: '/sheets/:id/neighbors', name: 'sheet-neighbors', component: NeighborView },
+  { path: '/search', name: 'search', component: SearchPage },
   { path: '/:pathMatch(.*)*', redirect: '/sheets' },
 ]
 

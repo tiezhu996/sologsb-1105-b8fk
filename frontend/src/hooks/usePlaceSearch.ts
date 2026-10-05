@@ -1,13 +1,13 @@
 import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import type { PlacePair } from '../types/placePair'
 import type { Sheet } from '../types/sheet'
+import type { HighlightPart } from '../types/search'
+import { splitHighlight } from '../utils/searchIndex'
 import { usePlaceStore } from '../stores/placeStore'
 import { useSheetStore } from '../stores/sheetStore'
 
-export interface HighlightPart {
-  text: string
-  matched: boolean
-}
+export type { HighlightPart }
+export { splitHighlight }
 
 export interface PlaceSearchFieldMatch {
   field: '古名' | '今名' | '异写' | '图上方位'
@@ -19,36 +19,6 @@ export interface PlaceSearchHit {
   pair: PlacePair
   sheet?: Sheet
   matches: PlaceSearchFieldMatch[]
-}
-
-export function splitHighlight(text: string, keyword: string): HighlightPart[] {
-  const normalizedKeyword = keyword.trim().toLocaleLowerCase()
-  if (!normalizedKeyword) {
-    return [{ text, matched: false }]
-  }
-
-  const normalizedText = text.toLocaleLowerCase()
-  const parts: HighlightPart[] = []
-  let cursor = 0
-  let matchIndex = normalizedText.indexOf(normalizedKeyword)
-
-  while (matchIndex >= 0) {
-    if (matchIndex > cursor) {
-      parts.push({ text: text.slice(cursor, matchIndex), matched: false })
-    }
-    parts.push({
-      text: text.slice(matchIndex, matchIndex + normalizedKeyword.length),
-      matched: true,
-    })
-    cursor = matchIndex + normalizedKeyword.length
-    matchIndex = normalizedText.indexOf(normalizedKeyword, cursor)
-  }
-
-  if (cursor < text.length) {
-    parts.push({ text: text.slice(cursor), matched: false })
-  }
-
-  return parts.length > 0 ? parts : [{ text, matched: false }]
 }
 
 export function usePlaceSearch(keyword: MaybeRefOrGetter<string>) {

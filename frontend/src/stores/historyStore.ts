@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { NameHistory } from '../types/history'
 import { createId, db, plain } from '../utils/db'
+import { notifyUpsert } from '../services/indexer'
 import { sortByPeriod } from '../utils/scale'
 
 export type NewNameHistory = Omit<NameHistory, 'id'>
@@ -42,6 +43,7 @@ export const useHistoryStore = defineStore('history', () => {
     await db.histories.add(plain(history))
     histories.value = [...histories.value, history]
     currentPairId.value = history.placePairId
+    notifyUpsert('history', history.id)
     return history
   }
 

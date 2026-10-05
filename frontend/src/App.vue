@@ -1,10 +1,19 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { ensureIndex } from './services/indexer'
+
 const navigation = [
   { label: '图幅编目台', to: '/sheets', hint: '编目与筛选' },
   { label: '地名对照台', to: '/places', hint: '古今与异写' },
   { label: '沿革时间线', to: '/places/place-bp-yi-3-1/history', hint: '年代脉络' },
   { label: '邻接拼合预览', to: '/sheets/sheet-bp-yi-3/neighbors', hint: '四至关系' },
+  { label: '本地检索台', to: '/search', hint: '关联链检索' },
 ]
+
+onMounted(() => {
+  // 后台确保索引就绪：首次分批构建，中断则从检查点续做
+  void ensureIndex()
+})
 </script>
 
 <template>

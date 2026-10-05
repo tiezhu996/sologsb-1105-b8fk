@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie'
 import type { NameHistory } from '../types/history'
 import type { PlacePair } from '../types/placePair'
 import type { ScanItem } from '../types/scan'
+import type { BuildState, SearchDoc, SearchToken } from '../types/search'
 import type { Sheet } from '../types/sheet'
 
 const sheets: Sheet[] = [
@@ -381,6 +382,9 @@ class GboldmapDatabase extends Dexie {
   scans!: Table<ScanItem, string>
   placePairs!: Table<PlacePair, string>
   histories!: Table<NameHistory, string>
+  searchDocs!: Table<SearchDoc, string>
+  searchTokens!: Table<SearchToken, [string, string]>
+  searchMeta!: Table<BuildState, string>
 
   constructor() {
     super('gboldmap-db')
@@ -407,6 +411,18 @@ class GboldmapDatabase extends Dexie {
             sheet.schemaRev = 2
           })
       })
+
+    // version(3) 增加本地检索索引：文档表、倒排词表与构建检查点。
+    // 索引为派生数据，损坏时可由 services/indexer.ts 分批重建。
+    this.version(3).stores({
+      sheets: 'id, code, year, scale, status, series',
+      scans: 'id, sheetId, importedAt, quality',
+      placePairs: 'id, sheetId, oldName, newName, placeType, certainty',
+      histories: 'id, placePairId, period, changeType',
+      searchDocs: 'id, kind, sheetId',
+      searchTokens: '[token+docId], token, docId',
+      searchMeta: 'key',
+    })
 
     this.on('populate', async () => {
       await this.sheets.bulkAdd(sheets)

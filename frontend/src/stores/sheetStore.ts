@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { ScanItem } from '../types/scan'
 import type { Sheet } from '../types/sheet'
 import { createId, db, plain } from '../utils/db'
+import { notifyUpsert } from '../services/indexer'
 import { sortByYear } from '../utils/scale'
 
 export type NewSheet = Omit<Sheet, 'id' | 'neighborCodes'> & {
@@ -53,6 +54,7 @@ export const useSheetStore = defineStore('sheet', () => {
     await db.sheets.add(plain(sheet))
     sheets.value = sortByYear([...sheets.value, sheet]).reverse()
     currentSheet.value = sheet
+    notifyUpsert('sheet', sheet.id)
     return sheet
   }
 
@@ -72,6 +74,7 @@ export const useSheetStore = defineStore('sheet', () => {
     }
     await db.scans.add(plain(scan))
     allScans.value = [...allScans.value, scan]
+    notifyUpsert('scan', scan.id)
     return scan
   }
 
