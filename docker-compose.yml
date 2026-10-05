@@ -1,0 +1,10 @@
+name: gboldmap
+
+services:
+  frontend:
+    build: ./frontend
+    image: gboldmap-frontend:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-gboldmap}-frontend
+    ports:
+      - "${FRONTEND_PORT:-21805}:80"
+    restart: unless-stopped
