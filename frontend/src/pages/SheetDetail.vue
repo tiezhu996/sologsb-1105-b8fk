@@ -16,15 +16,18 @@ const route = useRoute()
 const sheetStore = useSheetStore()
 const placeStore = usePlaceStore()
 const searchKeyword = ref('')
-const { hits } = usePlaceSearch(searchKeyword)
-const showScanForm = ref(false)
-
 const sheetId = computed(() => String(route.params.id ?? ''))
 const sheet = computed(() => {
   const current = sheetStore.currentSheet
   return current?.id === sheetId.value ? current : undefined
 })
 const relatedPlaces = computed(() => placeStore.getPairsForSheet(sheetId.value))
+const { hits, matches, ready: searchReady, updating: searchUpdating, hasSnapshot } = usePlaceSearch(
+  searchKeyword,
+  relatedPlaces,
+)
+const showScanForm = ref(false)
+
 const relatedHits = computed(() => hits.value.filter((hit) => hit.pair.sheetId === sheetId.value))
 const spanEstimate = computed(() => (sheet.value ? estimateSheetSpan(sheet.value.scale, sheet.value.sheetSizeCm) : undefined))
 
@@ -200,20 +203,33 @@ watch(sheetId, () => {
     <section class="section-title">
       <div>
         <h2>图内地名核录</h2>
-        <span class="muted">可检索本图幅的古名、今名、异写与图上方位。</span>
+        <span class="muted">可沿图幅号、古名、今名、异写、沿革与扫描件名检索。</span>
       </div>
-      <el-input v-model="searchKeyword" clearable placeholder="检索本地名" style="width: 260px" />
+      <el-input v-model="searchKeyword" clearable placeholder="检索本地名" style="width: 260px" :disabled="!searchReady && !hasSnapshot" />
     </section>
 
+    <p v-if="searchUpdating && hasSnapshot" class="index-inline-hint" data-testid="detail-index-updating">
+      检索索引更新中，正在只重算受影响条目；下方为上一版完整结果。
+    </p>
+    <p v-else-if="!searchReady" class="index-inline-hint" data-testid="detail-index-building">
+      本地检索索引首次建立中（分批写入并已留检查点），完成后即可检索。
+    </p>
+
     <div v-if="relatedPlaces.length" class="place-list">
+      <!-- matches 内部带快照语义：更新期间沿用上一版命中集合，未算完不混入新条目。 -->
       <PairRow
-        v-for="pair in relatedHits.length || !searchKeyword ? relatedPlaces : []"
+        v-for="pair in relatedPlaces.filter(matches)"
         :key="pair.id"
         :pair="pair"
         :query="searchKeyword"
         :sheet-code="sheet.code"
       />
-      <div v-if="searchKeyword && relatedHits.length === 0" class="empty-inline">本地名未检索到吻合记录。</div>
+      <div
+        v-if="searchKeyword && searchReady && relatedHits.length === 0"
+        class="empty-inline"
+      >
+        本地名未检索到吻合记录（可改试图幅号、沿革或扫描件名关键词）。
+      </div>
     </div>
   </section>
 

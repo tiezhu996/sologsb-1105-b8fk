@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:search": "esbuild test/search-index.test.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/search-test.mjs --log-level=warning && node node_modules/.cache/search-test.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.8",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "^5.6.2",
     "vite": "^5.4.8",
     "vue-tsc": "^2.1.6"

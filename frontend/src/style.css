@@ -343,6 +343,81 @@ p {
   font-weight: 700;
 }
 
+.index-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin: -6px 0 18px;
+  background: rgba(255, 247, 224, 0.9);
+  border: 1px dashed #c9a35a;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.index-inline-hint {
+  margin: 6px 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.index-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  background: rgba(244, 237, 225, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.index-chain__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+}
+
+.index-chain__label {
+  color: var(--muted);
+  flex: 0 0 72px;
+}
+
+.index-chain mark {
+  background: rgba(201, 163, 90, 0.35);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.index-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.index-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  background: rgba(244, 237, 225, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.index-panel__grow {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(315px, 1fr));

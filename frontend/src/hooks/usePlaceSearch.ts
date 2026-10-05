@@ -1,8 +1,8 @@
-import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import { useSearchIndexStore } from '../stores/searchIndexStore'
 import type { PlacePair } from '../types/placePair'
-import type { Sheet } from '../types/sheet'
-import { usePlaceStore } from '../stores/placeStore'
-import { useSheetStore } from '../stores/sheetStore'
+import type { SearchField } from '../types/search'
+import { searchMatchedSourceIds } from '../utils/searchEngine'
 
 export interface HighlightPart {
   text: string
@@ -17,9 +17,19 @@ export interface PlaceSearchFieldMatch {
 
 export interface PlaceSearchHit {
   pair: PlacePair
-  sheet?: Sheet
   matches: PlaceSearchFieldMatch[]
 }
+
+/** 地名条目可沿关联链命中的字段：图幅号、古名、今名、异写、沿革、扫描件名、图上方位。 */
+const PLACE_SEARCH_FIELDS: SearchField[] = [
+  '图幅号',
+  '古名',
+  '今名',
+  '异写',
+  '沿革',
+  '扫描件名',
+  '图上方位',
+]
 
 export function splitHighlight(text: string, keyword: string): HighlightPart[] {
   const normalizedKeyword = keyword.trim().toLocaleLowerCase()
@@ -51,19 +61,61 @@ export function splitHighlight(text: string, keyword: string): HighlightPart[] {
   return parts.length > 0 ? parts : [{ text, matched: false }]
 }
 
-export function usePlaceSearch(keyword: MaybeRefOrGetter<string>) {
-  const placeStore = usePlaceStore()
-  const sheetStore = useSheetStore()
+/**
+ * 地名反向检索。
+ *
+ * 命中集合来自 IndexedDB 中的本地检索索引（沿图幅号、古名、今名、异写、沿革、
+ * 扫描件名与图上方位的反规范化文档），由索引器在源数据变化时只重算受影响条目，
+ * 这里不再对内存中的全部地名做全量扫描。
+ *
+ * 快照语义与综合检索一致：更新期间沿用上一份命中集合，重算完成后整批替换。
+ */
+export function usePlaceSearch(
+  keyword: MaybeRefOrGetter<string>,
+  pairs: MaybeRefOrGetter<PlacePair[]>,
+) {
+  const indexStore = useSearchIndexStore()
+
+  const matchedIds = ref<Set<string>>(new Set())
+  const hasSnapshot = ref(false)
+  let token = 0
 
   const normalizedKeyword = computed(() => toValue(keyword).trim().toLocaleLowerCase())
+
+  async function refresh(): Promise<void> {
+    if (!indexStore.ready) {
+      return
+    }
+    const currentToken = ++token
+    const query = normalizedKeyword.value
+    const next = query
+      ? await searchMatchedSourceIds('place', query, { fields: PLACE_SEARCH_FIELDS })
+      : new Set(toValue(pairs).map((pair) => pair.id))
+    if (currentToken !== token) {
+      return
+    }
+    matchedIds.value = next
+    hasSnapshot.value = true
+  }
+
+  watch(
+    [normalizedKeyword, () => toValue(pairs), () => indexStore.ready, () => indexStore.docsRev],
+    () => {
+      void refresh()
+    },
+    { immediate: true },
+  )
 
   const hits = computed<PlaceSearchHit[]>(() => {
     const query = normalizedKeyword.value
     if (!query) {
       return []
     }
-
-    return placeStore.pairs.flatMap((pair) => {
+    const rows: PlaceSearchHit[] = []
+    for (const pair of toValue(pairs)) {
+      if (!matchedIds.value.has(pair.id)) {
+        continue
+      }
       const candidates: Array<{ field: PlaceSearchFieldMatch['field']; text: string }> = [
         { field: '古名', text: pair.oldName },
         { field: '今名', text: pair.newName },
@@ -76,34 +128,25 @@ export function usePlaceSearch(keyword: MaybeRefOrGetter<string>) {
           ...candidate,
           parts: splitHighlight(candidate.text, toValue(keyword)),
         }))
-
-      if (matches.length === 0) {
-        return []
-      }
-
-      const sheet = sheetStore.sheets.find((item) => item.id === pair.sheetId)
-      return [{ pair, ...(sheet ? { sheet } : {}), matches }]
-    })
+      rows.push({ pair, matches })
+    }
+    return rows
   })
-
-  watch(
-    hits,
-    (rows) => {
-      placeStore.setMatchedPairIds(rows.map((row) => row.pair.id))
-    },
-    { immediate: true },
-  )
 
   function matches(pair: PlacePair): boolean {
     if (!normalizedKeyword.value) {
       return true
     }
-    return hits.value.some((hit) => hit.pair.id === pair.id)
+    // 更新期间沿用上一份命中集合，保证列表不会混入尚未重算完的条目。
+    return matchedIds.value.has(pair.id)
   }
 
   return {
     hits,
     matches,
     highlight: splitHighlight,
+    ready: computed(() => indexStore.ready),
+    updating: computed(() => !indexStore.ready || indexStore.pumping),
+    hasSnapshot,
   }
 }

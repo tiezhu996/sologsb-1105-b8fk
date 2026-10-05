@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { NameHistory } from '../types/history'
 import { createId, db, plain } from '../utils/db'
 import { sortByPeriod } from '../utils/scale'
+import { touchPlace } from '../utils/searchIndexer'
 
 export type NewNameHistory = Omit<NameHistory, 'id'>
 
@@ -42,6 +43,8 @@ export const useHistoryStore = defineStore('history', () => {
     await db.histories.add(plain(history))
     histories.value = [...histories.value, history]
     currentPairId.value = history.placePairId
+    // 沿革文本反规范化在所属地名文档中，只重算该地名条目。
+    void touchPlace(history.placePairId)
     return history
   }
 

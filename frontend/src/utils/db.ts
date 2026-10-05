@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie'
 import type { NameHistory } from '../types/history'
 import type { PlacePair } from '../types/placePair'
 import type { ScanItem } from '../types/scan'
+import type { IndexMeta, SearchDirtyEntry, SearchDoc } from '../types/search'
 import type { Sheet } from '../types/sheet'
 
 const sheets: Sheet[] = [
@@ -381,6 +382,9 @@ class GboldmapDatabase extends Dexie {
   scans!: Table<ScanItem, string>
   placePairs!: Table<PlacePair, string>
   histories!: Table<NameHistory, string>
+  searchDocs!: Table<SearchDoc, string>
+  searchDirty!: Table<SearchDirtyEntry, string>
+  searchMeta!: Table<IndexMeta, string>
 
   constructor() {
     super('gboldmap-db')
@@ -407,6 +411,18 @@ class GboldmapDatabase extends Dexie {
             sheet.schemaRev = 2
           })
       })
+
+    // version(3) 增加本地检索索引：
+    // searchDocs 为反规范化索引文档，searchDirty 为待重算条目，searchMeta 保存分批重建检查点。
+    this.version(3).stores({
+      sheets: 'id, code, year, scale, status, series',
+      scans: 'id, sheetId, importedAt, quality',
+      placePairs: 'id, sheetId, oldName, newName, placeType, certainty',
+      histories: 'id, placePairId, period, changeType',
+      searchDocs: 'docId, root, sourceId, sheetId',
+      searchDirty: 'docId, root, sourceId',
+      searchMeta: 'key',
+    })
 
     this.on('populate', async () => {
       await this.sheets.bulkAdd(sheets)

@@ -4,6 +4,7 @@ import type { ScanItem } from '../types/scan'
 import type { Sheet } from '../types/sheet'
 import { createId, db, plain } from '../utils/db'
 import { sortByYear } from '../utils/scale'
+import { touch, touchSheetCascade } from '../utils/searchIndexer'
 
 export type NewSheet = Omit<Sheet, 'id' | 'neighborCodes'> & {
   neighborCodes?: string[]
@@ -53,6 +54,8 @@ export const useSheetStore = defineStore('sheet', () => {
     await db.sheets.add(plain(sheet))
     sheets.value = sortByYear([...sheets.value, sheet]).reverse()
     currentSheet.value = sheet
+    // 新图幅只影响它自己的索引文档。
+    void touch('sheet', sheet.id)
     return sheet
   }
 
@@ -72,6 +75,8 @@ export const useSheetStore = defineStore('sheet', () => {
     }
     await db.scans.add(plain(scan))
     allScans.value = [...allScans.value, scan]
+    // 扫描件名反规范化在图幅文档与该图幅全部地名文档中，需要级联重算。
+    void touchSheetCascade(scan.sheetId)
     return scan
   }
 

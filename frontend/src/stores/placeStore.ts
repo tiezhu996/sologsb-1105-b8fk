@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Certainty, PlacePair, PlaceType } from '../types/placePair'
 import { createId, db, plain } from '../utils/db'
+import { touchPlace } from '../utils/searchIndexer'
 
 export type NewPlacePair = Omit<PlacePair, 'id'>
 
@@ -11,7 +12,6 @@ export const usePlaceStore = defineStore('place', () => {
   const placeTypeFilter = ref<PlaceType | '全部'>('全部')
   const certaintyFilter = ref<Certainty | '全部'>('全部')
   const keyword = ref('')
-  const matchedPairIds = ref<string[]>([])
   const initialized = ref(false)
   let initialization: Promise<void> | null = null
 
@@ -43,6 +43,8 @@ export const usePlaceStore = defineStore('place', () => {
     await db.placePairs.add(plain(pair))
     pairs.value = [...pairs.value, pair]
     currentPair.value = pair
+    // 新地名只重算它自己的索引文档（关联链在构建文档时沿外键读取）。
+    void touchPlace(pair.id)
     return pair
   }
 
@@ -55,15 +57,10 @@ export const usePlaceStore = defineStore('place', () => {
     return pairs.value.filter((pair) => pair.sheetId === sheetId)
   }
 
-  function setMatchedPairIds(ids: string[]): void {
-    matchedPairIds.value = [...ids]
-  }
-
   function resetFilters(): void {
     placeTypeFilter.value = '全部'
     certaintyFilter.value = '全部'
     keyword.value = ''
-    matchedPairIds.value = []
   }
 
   return {
@@ -72,14 +69,12 @@ export const usePlaceStore = defineStore('place', () => {
     placeTypeFilter,
     certaintyFilter,
     keyword,
-    matchedPairIds,
     filteredPairs,
     initialized,
     init,
     addPair,
     loadPair,
     getPairsForSheet,
-    setMatchedPairIds,
     resetFilters,
   }
 })

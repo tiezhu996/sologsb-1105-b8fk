@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { usePlaceStore, type NewPlacePair } from '../stores/placeStore'
 import { useSheetStore } from '../stores/sheetStore'
+import { useSearchIndexStore } from '../stores/searchIndexStore'
 import type { Certainty, PlacePair, PlaceType } from '../types/placePair'
 import { CERTAINTIES, PLACE_TYPES } from '../types/placePair'
 import { usePlaceSearch } from '../hooks/usePlaceSearch'
@@ -10,7 +11,11 @@ import VacantHint from '../components/common/VacantHint.vue'
 
 const placeStore = usePlaceStore()
 const sheetStore = useSheetStore()
-const { matches } = usePlaceSearch(placeStore.keyword)
+const searchIndexStore = useSearchIndexStore()
+const { matches, ready: searchReady, updating: searchUpdating, hasSnapshot } = usePlaceSearch(
+  placeStore.keyword,
+  computed(() => placeStore.filteredPairs),
+)
 
 const showCreateForm = ref(false)
 const formError = ref('')
@@ -132,7 +137,7 @@ onMounted(() => {
     </form>
 
     <div class="filter-bar">
-      <el-input v-model="placeStore.keyword" clearable placeholder="输入古名、今名、异写或图上方位，反向查询" class="filter-bar__grow" />
+      <el-input v-model="placeStore.keyword" clearable placeholder="输入古名、今名、异写或图上方位，反向查询" class="filter-bar__grow" :disabled="!searchReady && !hasSnapshot" />
       <el-select v-model="placeStore.placeTypeFilter" style="width: 130px" aria-label="按地名类型筛选">
         <el-option label="全部类型" value="全部" />
         <el-option v-for="placeType in PLACE_TYPES" :key="placeType" :label="placeType" :value="placeType" />
@@ -144,6 +149,18 @@ onMounted(() => {
       <span class="filter-count">当前记录数：<strong data-testid="count-place">{{ visiblePairs.length }}</strong></span>
     </div>
 
+    <div v-if="searchUpdating" class="index-banner" data-testid="index-status">
+      <template v-if="hasSnapshot">
+        <el-tag type="warning" effect="dark">检索更新中</el-tag>
+        <span class="muted">正在只重算受影响条目，以下为上一版完整结果，更新完成后整批替换。</span>
+      </template>
+      <template v-else>
+        <el-tag type="info" effect="dark">首次建立本地检索索引</el-tag>
+        <span class="muted">馆藏条目分批建入索引，检查点已落盘，中途关闭也会续做，不添重复条目。</span>
+        <el-progress :percentage="searchIndexStore.progressPercent" :stroke-width="10" style="width: 220px" />
+      </template>
+    </div>
+
     <div v-if="visiblePairs.length" class="place-list">
       <div v-for="pair in visiblePairs" :key="pair.id" data-testid="row-place">
         <PairRow :pair="pair" :query="placeStore.keyword" :sheet-code="getSheetCode(pair)" />
@@ -153,6 +170,10 @@ onMounted(() => {
           </router-link>
         </div>
       </div>
+    </div>
+
+    <div v-else-if="!hasSnapshot && searchUpdating" class="empty-inline" data-testid="place-building">
+      索引分批建立中，完成后即可检索；已落检查点，中断后自动续做。
     </div>
 
     <VacantHint
